@@ -1,105 +1,62 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Activity,
-  ArrowUpRight,
-  BrainCircuit,
-  ChevronDown,
-  Database,
-  FileText,
-  Send,
-  Sparkles,
-} from "lucide-react";
+import { useState } from "react";
 import "./App.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
-const SUGGESTED_QUESTIONS = [
-  "What is Agentic AI?",
-  "How does Agentic AI work?",
-  "What capabilities do AI agents have?",
-];
-
-function sourceLabel(source) {
-  const title = source.title || source.document_title || source.source;
-  return title ? String(title).split(/[\\/]/).pop() : "Retrieved passage";
-}
+const API_URL = "http://127.0.0.1:8000";
 
 function App() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [apiStatus, setApiStatus] = useState("checking");
-  const messagesEndRef = useRef(null);
 
-  useEffect(() => {
-    let disposed = false;
+  const askQuestion = async (text = question) => {
+    const q = text.trim();
 
-    const checkHealth = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/health`);
-        const health = await response.json();
-        if (!response.ok || health.status !== "healthy") {
-          throw new Error("API is not healthy");
-        }
-        if (!disposed) setApiStatus("online");
-      } catch {
-        if (!disposed) setApiStatus("offline");
-      }
-    };
+    if (!q || loading) return;
 
-    checkHealth();
-    const intervalId = window.setInterval(checkHealth, 30_000);
-
-    return () => {
-      disposed = true;
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, loading]);
-
-  const askQuestion = async (submittedQuestion = question) => {
-    const userQuestion = submittedQuestion.trim();
-    if (!userQuestion || loading) return;
-
-    setMessages((current) => [
-      ...current,
-      { id: crypto.randomUUID(), role: "user", content: userQuestion },
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: q },
     ]);
+
     setQuestion("");
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/ask`, {
+      const response = await fetch(`${API_URL}/ask`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: userQuestion }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: q,
+        }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "The request failed.");
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
 
-      setMessages((current) => [
-        ...current,
+      const data = await response.json();
+
+      setMessages((prev) => [
+        ...prev,
         {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: data.answer || "The API returned an empty answer.",
-          sources: Array.isArray(data.sources) ? data.sources : [],
-        },
-      ]);
-    } catch {
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
           role: "assistant",
           content:
-            "I couldn't complete that request. Check that the API, Pinecone, and Ollama are available, then try again.",
-          sources: [],
-          isError: true,
+            data.answer ||
+            "No answer was returned from the RAG system.",
+          sources: data.sources || [],
+        },
+      ]);
+    } catch (error) {
+      console.error(error);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "Unable to connect to the RAG API. Make sure FastAPI is running on port 8000.",
         },
       ]);
     } finally {
@@ -107,194 +64,174 @@ function App() {
     }
   };
 
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      askQuestion();
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    askQuestion();
   };
 
+  const suggestions = [
+    "What is Agentic AI?",
+    "How does Agentic AI work?",
+    "What capabilities do AI agents have?",
+  ];
+
   return (
-    <div className="app-shell">
-      <div className="background-grid" aria-hidden="true" />
-      <div className="glow glow-one" aria-hidden="true" />
-      <div className="glow glow-two" aria-hidden="true" />
+    <div className="app">
+      <div className="background-grid" />
+      <div className="glow glow-one" />
+      <div className="glow glow-two" />
 
       <header className="topbar">
         <div className="brand">
-          <div className="logo" aria-hidden="true">
-            <Sparkles size={21} />
-          </div>
-          <div className="brand-copy">
+          <div className="brand-icon">✦</div>
+
+          <div>
             <h1>AGENTIC AI</h1>
             <span>RAG INTELLIGENCE SYSTEM</span>
           </div>
         </div>
 
-        <div className={`system-status ${apiStatus}`} role="status">
+        <div className="status">
           <span className="status-dot" />
-          <span>
-            {apiStatus === "online"
-              ? "API CONNECTED"
-              : apiStatus === "offline"
-                ? "API OFFLINE"
-                : "CHECKING API"}
-          </span>
+          SYSTEM ONLINE
         </div>
       </header>
 
-      <main className="main-layout">
-        <aside className="sidebar" aria-label="System configuration">
-          <p className="sidebar-heading">SYSTEMS</p>
-
-          <div className="side-card">
-            <div className="side-icon model-icon"><BrainCircuit size={19} /></div>
-            <div className="side-copy">
-              <strong>Qwen 2.5</strong>
-              <p>Ollama · local inference</p>
-            </div>
-            <span className="side-tag">7B</span>
+      <main className="main">
+        <section className="hero">
+          <div className="eyebrow">
+            LOCAL KNOWLEDGE ENGINE
           </div>
 
-          <div className="side-card">
-            <div className="side-icon database-icon"><Database size={19} /></div>
-            <div className="side-copy">
-              <strong>Pinecone</strong>
-              <p>agentic-ai-index-384</p>
-            </div>
-            <span className="side-tag">384D</span>
-          </div>
+          <h2>
+            Agentic <span>Intelligence</span>
+          </h2>
 
-          <div className="side-card">
-            <div className="side-icon activity-icon"><Activity size={19} /></div>
-            <div className="side-copy">
-              <strong>RAG pipeline</strong>
-              <p>Top 3 retrieved chunks</p>
-            </div>
-          </div>
+          <p>
+            Explore your Agentic AI knowledge base,
+            grounded in retrieved source material.
+          </p>
 
-          <div className="tech-box">
-            <span className="tech-label">LOCAL EMBEDDINGS</span>
-            <strong>all-MiniLM-L6-v2</strong>
-            <span className="tech-detail">384 dimensions</span>
+          <div className="suggestions">
+            {suggestions.map((item) => (
+              <button
+                key={item}
+                onClick={() => askQuestion(item)}
+                disabled={loading}
+              >
+                {item}
+                <span>→</span>
+              </button>
+            ))}
           </div>
+        </section>
 
-          <div className="sidebar-footer">
-            <span className="sidebar-pulse" />
-            <span>Context-grounded responses</span>
-          </div>
-        </aside>
-
-        <section className="chat-container" aria-label="Agentic AI chat">
+        <section className="chat-area">
           {messages.length === 0 ? (
-            <div className="welcome">
-              <div className="orb" aria-hidden="true">
-                <span className="orb-core"><Sparkles size={30} /></span>
-                <span className="orb-ring orb-ring-one" />
-                <span className="orb-ring orb-ring-two" />
+            <div className="empty-state">
+              <div className="orb">
+                <div className="orb-inner">✦</div>
               </div>
-              <p className="eyebrow">LOCAL KNOWLEDGE ENGINE</p>
-              <h2>Agentic Intelligence</h2>
-              <p className="welcome-copy">
-                Explore your Agentic AI knowledge base, grounded in retrieved source material.
-              </p>
 
-              <div className="suggestions" aria-label="Suggested questions">
-                {SUGGESTED_QUESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => setQuestion(suggestion)}
-                  >
-                    <span>{suggestion}</span>
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
+              <h3>Knowledge Interface</h3>
+
+              <p>
+                Ask a question about Agentic AI and receive
+                an answer generated from your Pinecone
+                knowledge base.
+              </p>
             </div>
           ) : (
-            <div className="messages" role="log" aria-live="polite" aria-relevant="additions">
-              {messages.map((message) => (
-                <article className={`message-row ${message.role}`} key={message.id}>
-                  <div className="message-avatar" aria-hidden="true">
-                    {message.role === "assistant" ? <Sparkles size={16} /> : "YOU"}
-                  </div>
+            <div className="messages">
+              {messages.map((message, index) => (
+                <div
+                  className={`message-row ${message.role}`}
+                  key={index}
+                >
+                  {message.role === "assistant" && (
+                    <div className="avatar">✦</div>
+                  )}
+
                   <div className="message-content">
-                    <span className="message-label">
-                      {message.role === "assistant" ? "AGENTIC AI" : "YOU"}
-                    </span>
-                    <p className={message.isError ? "message-error" : ""}>{message.content}</p>
-                    {message.role === "assistant" && message.sources?.length > 0 && (
-                      <details className="sources">
-                        <summary>
-                          <FileText size={15} aria-hidden="true" />
-                          <span>Sources</span>
-                          <span className="source-count">{message.sources.length}</span>
-                          <ChevronDown className="source-chevron" size={15} aria-hidden="true" />
-                        </summary>
-                        <div className="source-list">
-                          {message.sources.map((source, index) => (
-                            <div className="source-item" key={`${source.source || "source"}-${index}`}>
-                              <strong>{sourceLabel(source)}</strong>
-                              {source.page !== undefined && (
-                                <span>Page {source.page}</span>
-                              )}
-                              {source.source && (
-                                <small className="source-path">{source.source}</small>
-                              )}
+                    <div className="message-label">
+                      {message.role === "user"
+                        ? "YOU"
+                        : "AGENTIC AI"}
+                    </div>
+
+                    <div className="message-bubble">
+                      {message.content}
+                    </div>
+
+                    {message.sources?.length > 0 && (
+                      <div className="sources">
+                        <span>Sources</span>
+
+                        {message.sources.map(
+                          (source, sourceIndex) => (
+                            <div
+                              key={sourceIndex}
+                              className="source-item"
+                            >
+                              {source}
                             </div>
-                          ))}
-                        </div>
-                      </details>
+                          )
+                        )}
+                      </div>
                     )}
                   </div>
-                </article>
+                </div>
               ))}
 
               {loading && (
-                <div className="message-row assistant" aria-label="Agentic AI is responding">
-                  <div className="message-avatar" aria-hidden="true"><Sparkles size={16} /></div>
+                <div className="message-row assistant">
+                  <div className="avatar">✦</div>
+
                   <div className="message-content">
-                    <span className="message-label">RETRIEVING CONTEXT</span>
-                    <div className="typing" aria-hidden="true">
-                      <span /><span /><span />
+                    <div className="message-label">
+                      AGENTIC AI
+                    </div>
+
+                    <div className="message-bubble typing">
+                      <span />
+                      <span />
+                      <span />
                     </div>
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
           )}
-
-          <div className="input-area">
-            <div className="input-wrapper">
-              <textarea
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about your Agentic AI knowledge base..."
-                aria-label="Your question"
-                rows={1}
-              />
-              <button
-                className="send-button"
-                type="button"
-                onClick={() => askQuestion()}
-                disabled={loading || !question.trim()}
-                aria-label="Send question"
-                title="Send question"
-              >
-                <Send size={18} />
-              </button>
-            </div>
-            <div className="input-info">
-              <span>LOCAL QWEN 2.5</span>
-              <span className="info-divider" />
-              <span>PINECONE RAG</span>
-              <span className="input-hint">ENTER TO SEND · SHIFT + ENTER FOR NEW LINE</span>
-            </div>
-          </div>
         </section>
+
+        <form
+          className="input-container"
+          onSubmit={handleSubmit}
+        >
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask about your Agentic AI knowledge base..."
+            disabled={loading}
+          />
+
+          <button
+            className="send-button"
+            type="submit"
+            disabled={loading || !question.trim()}
+          >
+            {loading ? "..." : "➤"}
+          </button>
+        </form>
+
+        <div className="system-info">
+          <span>LOCAL QWEN 2.5</span>
+          <b>•</b>
+          <span>PINECONE RAG</span>
+          <b>•</b>
+          <span>384D EMBEDDINGS</span>
+        </div>
       </main>
     </div>
   );
