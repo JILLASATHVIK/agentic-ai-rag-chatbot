@@ -1,111 +1,281 @@
 # Agentic AI RAG Chatbot
 
-A document-grounded chatbot using local Hugging Face embeddings, Pinecone retrieval, and Qwen 2.5 through Ollama.
+A futuristic Retrieval-Augmented Generation (RAG) chatbot that answers questions from an Agentic AI PDF knowledge base.
 
-## Prerequisites
+The application combines PDF ingestion, local Hugging Face embeddings, Pinecone vector search, FastAPI, LangChain, Ollama, Qwen 2.5 7B, and a React/Vite frontend.
 
-- Python 3.12
-- Node.js and npm
-- Ollama with `qwen2.5:7b`
-- A Pinecone API key and the `agentic-ai-index-384` index (384 dimensions, AWS `us-east-1`, on-demand)
+## Features
 
-The embedding model is `all-MiniLM-L6-v2` (384 dimensions). No OpenAI API key is needed; generation runs locally through Ollama.
+- PDF document ingestion
+- Recursive text chunking
+- Local Hugging Face embeddings
+- Semantic vector search using Pinecone
+- Qwen 2.5 7B through Ollama
+- FastAPI backend
+- React + Vite frontend
+- Source metadata retrieval
+- Conversational RAG question answering
+- Futuristic AI-themed interface
 
-On first use, Hugging Face may warn about unauthenticated Hub requests; model downloads still work and are cached locally. The PDF parser may also warn that `fontTools` is missing for a CFF Type1 font. Neither warning currently prevents the project from working. If PDF text encoding needs troubleshooting, install the optional helper with `python -m pip install fonttools`.
+## Architecture
 
-## Setup
+PDF
+  |
+  v
+PyPDFLoader
+  |
+  v
+Recursive Character Text Splitter
+  |
+  v
+all-MiniLM-L6-v2
+  |
+  v
+Pinecone Vector Database
+  |
+  v
+Semantic Retrieval
+  |
+  v
+FastAPI
+  |
+  v
+Ollama - Qwen 2.5 7B
+  |
+  v
+React/Vite Frontend
 
-Run these commands in PowerShell from the project root:
+## Tech Stack
 
-```powershell
-cd C:\Users\JILLASATHVIK\Desktop\agentic-ai-rag-chatbot
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
+### Backend
 
-Create or edit `.env` in the project root. Keep actual credentials local and never put them in frontend files:
+- Python
+- FastAPI
+- LangChain
+- LangGraph
+- PyPDFLoader
+- Pinecone
 
-```dotenv
+### Embeddings
+
+- Hugging Face
+- Sentence Transformers
+- all-MiniLM-L6-v2
+
+### LLM
+
+- Ollama
+- Qwen 2.5 7B
+
+### Frontend
+
+- React
+- Vite
+- JavaScript
+- CSS
+
+### Vector Database
+
+- Pinecone
+- Dense vector index
+- 384-dimensional embeddings
+
+## Project Structure
+
+agentic-ai-rag-chatbot/
+|
+├── data/
+│   └── Ebook-Agentic-AI.pdf
+|
+├── src/
+│   ├── __init__.py
+│   ├── api.py
+│   ├── config.py
+│   ├── generation.py
+│   ├── graph.py
+│   ├── ingestion.py
+│   └── retrieval.py
+|
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+|
+├── .gitignore
+├── README.md
+└── requirements.txt
+
+## Requirements
+
+- Python 3.10+
+- Node.js
+- Ollama
+- Pinecone account
+
+## Environment Variables
+
+Create a `.env` file in the project root:
+
 PINECONE_API_KEY=your_pinecone_api_key
 PINECONE_INDEX_NAME=agentic-ai-index-384
-```
 
-`OPENAI_API_KEY` is not used by this local-embedding/Ollama architecture.
+Never commit API keys or `.env` files to GitHub.
 
-## Start Ollama
+## Embedding Model
 
-In a separate PowerShell window, start Ollama if it is not already running:
+The project uses:
 
-```powershell
-ollama serve
-```
+all-MiniLM-L6-v2
 
-In another window, download and verify the model:
+The embedding model runs locally, so OpenAI API credits are not required for document embeddings.
 
-```powershell
-ollama pull qwen2.5:7b
+Pinecone index configuration:
+
+- Index: agentic-ai-index-384
+- Dimension: 384
+- Cloud: AWS
+- Region: us-east-1
+- Capacity: On-demand
+
+## Ollama Model
+
+The project uses:
+
+qwen2.5:7b
+
+Run:
+
+ollama run qwen2.5:7b
+
+Verify:
+
 ollama list
-```
 
-Confirm `qwen2.5:7b` appears in the list. If Ollama is already running as a service, just run the model verification commands.
+## Installation
 
-## Ingest the PDF
+Activate the Python virtual environment:
 
-From the project root with the virtual environment active:
+venv\Scripts\activate
 
-```powershell
+Install dependencies:
+
+pip install -r requirements.txt
+
+## PDF Ingestion
+
+The knowledge base PDF is:
+
+data/Ebook-Agentic-AI.pdf
+
+Run:
+
 python -m src.ingestion
-```
 
-This reads `data/Ebook-Agentic-AI.pdf`, creates 384-dimensional local embeddings, and uploads its chunks to the configured Pinecone index. Run ingestion again only when you intend to add/re-upload documents.
+The ingestion process:
 
-## Start FastAPI
+1. Loads the PDF.
+2. Splits the document into chunks.
+3. Generates local embeddings.
+4. Connects to Pinecone.
+5. Uploads the vectors.
 
-In a separate PowerShell window, activate the virtual environment and start the actual API module:
+## Start Backend
 
-```powershell
-cd C:\Users\JILLASATHVIK\Desktop\agentic-ai-rag-chatbot
-.\venv\Scripts\Activate.ps1
-python -m uvicorn src.api:app --reload
-```
+Run from the project root:
 
-The API is available at `http://127.0.0.1:8000`. CORS allows the Vite development origins `http://localhost:5173` and `http://127.0.0.1:5173`.
+uvicorn src.api:app --reload
 
-## Verify the API
+Backend:
 
-Check health:
+http://127.0.0.1:8000
 
-```powershell
-Invoke-RestMethod -Uri http://127.0.0.1:8000/health
-```
+Health endpoint:
 
-Expected response:
+GET /health
 
-```json
-{"status":"healthy"}
-```
+Example response:
 
-Send a question:
+{
+  "status": "healthy"
+}
 
-```powershell
-$body = @{ question = "What is Agentic AI?" } | ConvertTo-Json
-Invoke-RestMethod -Uri http://127.0.0.1:8000/ask -Method Post -ContentType "application/json" -Body $body
-```
+## Start Frontend
 
-The response includes the question, answer, and source metadata when available.
+Open another terminal:
 
-## Start the Frontend
-
-In a separate PowerShell window:
-
-```powershell
-cd C:\Users\JILLASATHVIK\Desktop\agentic-ai-rag-chatbot\frontend
+cd frontend
 npm install
-npm run dev -- --host 127.0.0.1
-```
+npm run dev
 
-Open `http://127.0.0.1:5173` (or the localhost URL printed by Vite), ask a suggested question, and confirm the answer and available sources appear. The UI also supports Enter to send and Shift+Enter for a new line.
+Open:
 
-To verify error handling, stop the FastAPI server and submit a question; the chat should keep the conversation visible and show a connection error. Restart the API and the status indicator will recover on its next health check.
+http://localhost:5173
+
+## API
+
+### Health Check
+
+GET /health
+
+### Ask Question
+
+POST /ask
+
+Example request:
+
+{
+  "question": "What is Agentic AI?"
+}
+
+## Example Questions
+
+- What is Agentic AI?
+- How does Agentic AI differ from traditional AI?
+- What can Agentic AI do?
+- What value does Agentic AI bring?
+- How does Agentic AI perform proactive problem solving?
+
+## Retrieval
+
+The chatbot retrieves relevant document chunks from Pinecone before generating an answer.
+
+Current retrieval configuration:
+
+- Top K: 3
+- Embedding model: all-MiniLM-L6-v2
+- Vector dimension: 384
+
+## Security
+
+API keys are stored in environment variables.
+
+The following files and directories should not be committed:
+
+.env
+venv/
+node_modules/
+frontend/dist/
+
+These are excluded through `.gitignore`.
+
+## Project Status
+
+- PDF ingestion: Complete
+- Document chunking: Complete
+- Local embeddings: Complete
+- Pinecone vector storage: Complete
+- Semantic retrieval: Complete
+- Qwen 2.5 7B generation: Complete
+- FastAPI API: Complete
+- React frontend: Complete
+- Production frontend build: Complete
+- GitHub repository: Complete
+
+## Project Overview
+
+Agentic AI RAG Chatbot is a full-stack Retrieval-Augmented Generation application that combines local embeddings, Pinecone vector search, FastAPI, Ollama, Qwen 2.5 7B, and a React frontend to answer questions using information retrieved from an Agentic AI PDF knowledge base.
